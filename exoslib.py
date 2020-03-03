@@ -87,6 +87,41 @@ def cmd2data(clicmd):
                     data.append(mdata)
     return data
 
+def cmd2Dict(clicmd):
+    """
+        some EXOS commands return not all info if you use cmd2data, e.g. show switch, this function helps in this case 
+    """
+    aDict = {}
+    tag = None
+    value = ""
+    data = exsh.clicmd(clicmd, capture=True)
+    for line in data.split("\n"):
+        if not line:
+            # ignore empty lines
+            continue
+        if line[0] != " ":
+            # this a tag line
+            s = line.rstrip().split(":", 1)
+            # cleanup the entries
+            s = [t.strip() for t in s]
+            if len(s) == 2:
+                if tag:
+                    # we need to save the old stuff
+                    aDict[tag] = value
+                tag = s[0]
+                value = s[1]
+            else:
+                # should not happen, but if than we add it to the previous tag
+                value += "\n" + s[0]
+        else:
+            # belongs to the previous tag
+            value += "\n" + line.strip()
+    if tag:
+        # save the last tag too
+        aDict[tag] = value
+    return aDict
+
+
 def get_active_ports():
     active_list = []
     vlan_ports_info = json.loads(exsh.clicmd('debug cfgmgr show next vlan.show_ports_info port=None '
